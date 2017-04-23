@@ -221,8 +221,6 @@ while True:
                         #msgTopic = '/ecg'
                         #publish(msgTopic, json_out)
                     if data_type == TYPE_rNIBP:
-                        if data_out[2] >= 1:
-                            must_read_hardware = 0
                         json_out = generate_json(data_out)
                         publish(json_out)
                         #msgTopic = '/nibp'
