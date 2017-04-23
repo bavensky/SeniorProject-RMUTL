@@ -6,6 +6,8 @@ import paho.mqtt.client as mqtt
 import paho.mqtt.publish as _publish
 import hexdump
 
+from datetime import date
+from datetime import time
 from datetime import datetime
 
 #Read PM6750
@@ -35,6 +37,14 @@ def generate_json(data_out):
   # out4 = ""
   global out
   global json_object
+
+  # today = datetime.now()
+  # json_object['datetime'] = today
+
+  now = datetime.now()
+  json_object['date'] = now.strftime("%A : %d/%B/%y")
+  json_object['time'] = now.strftime("%H:%M")
+
 
   # ECG Mqtt Sent
   if data_type == TYPE_rECG:
@@ -121,7 +131,8 @@ conn = client.connect("127.0.0.1")
 must_read_hardware = 0;
 must_command = 0;
 _second = 0;
-pevSec = 0;
+pevMin = 0;
+newMin = 0;
 
 def on_message(mosq, obj, msg):
     global must_read_hardware
@@ -129,6 +140,7 @@ def on_message(mosq, obj, msg):
     print(msg.topic + " " + message)
     
     if message == "1":
+        print "press"
         must_read_hardware = 1     
     else:
         must_read_hardware = 0
@@ -142,15 +154,20 @@ mqttc.connect("localhost", 1883,60)
 mqttc.subscribe("meditable/command", 0)
 
 
-
-
 while True:
     countloop = 0
     mqttc.loop()
     must_command = 1
 
     now = datetime.now()
-    pevSec = now.second
+    pevMin = now.strftime("%M")
+    newMin = int(pevMin) + 2
+
+    print "pre = %s " % now.strftime("%M")
+    print "newMin = %d" % newMin
+
+    if newMin >= 60:
+        newMin = newMin - 60
 
     while must_read_hardware == 1:
         if must_command == 1:
@@ -162,22 +179,24 @@ while True:
             port.write(command)
             command = bytearray ([0x55, 0xaa, 0x04, 0x04, 0x01, 0xf6])
             port.write(command)
-            time.sleep(1)
+            # time.sleep(1)
             must_command = 0
 
         
         #print "countloop = %d"% (countloop)
+        # now = datetime.now()
+        # print "%0.2d" % (now.second)
+        # _second = now.second
+
+
         now = datetime.now()
-        print "%0.2d" % (now.second)
-        _second = now.second
+        pevMin = now.strftime("%M")
+        print "loop = %d"  % newMin
+        print  now.strftime("%M")
 
-        if now.second == _second:
-            countloop += 1
-            time.sleep(0.1)
-
-        if pevSec <= countloop:
-            #print "countloop = END "
-            #time.sleep(2)
+        if int(pevMin) == newMin:
+            print " END "
+            must_command = 0
             must_read_hardware = 0
 
         rcv = port.read()
@@ -202,6 +221,8 @@ while True:
                         #msgTopic = '/ecg'
                         #publish(msgTopic, json_out)
                     if data_type == TYPE_rNIBP:
+                        if data_out[2] >= 1:
+                            must_read_hardware = 0
                         json_out = generate_json(data_out)
                         publish(json_out)
                         #msgTopic = '/nibp'
